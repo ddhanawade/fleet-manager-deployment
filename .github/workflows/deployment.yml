@@ -21,7 +21,7 @@ jobs:
       - name: Deploy to EC2
         run: |
           ssh -o StrictHostKeyChecking=no ec2-user@${{ secrets.EC2_PUBLIC_IP }} << 'EOF'
-          cd /path/to/deployment-repo
+          cd /opt/fleet-manager-prd/fleet-manager-deployment
           git pull origin main
           docker-compose down
           docker-compose up -d --build
