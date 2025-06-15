@@ -1,0 +1,98 @@
+services:
+  # Traefik - Reverse Proxy with SSL
+  traefik:
+    image: traefik:v3.0
+    container_name: traefik
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8080:8080"  # Traefik dashboard (remove in production)
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./traefik-data:/data
+    command:
+      - --api.dashboard=true
+      - --api.insecure=true  # Remove in production
+      - --providers.docker=true
+      - --providers.docker.exposedbydefault=false
+      - --entrypoints.web.address=:80
+      - --entrypoints.websecure.address=:443
+      - --certificatesresolvers.letsencrypt.acme.tlschallenge=true
+      - --certificatesresolvers.letsencrypt.acme.email=fleet.manager.mp@gmail.com
+      - --certificatesresolvers.letsencrypt.acme.storage=/data/acme.json
+      - --entrypoints.web.http.redirections.entrypoint.to=websecure
+      - --entrypoints.web.http.redirections.entrypoint.scheme=https
+    networks:
+      - traefik-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.traefik.rule=Host(`traefik.fleet-manager.in`)"
+      - "traefik.http.routers.traefik.tls.certresolver=letsencrypt"
+
+  # Fleet Manager Service
+  fleet-manager:
+    build:
+      context: https://github.com/ddhanawade/fleet-manager.git
+    container_name: fleet-manager
+    restart: unless-stopped
+    environment:
+      - SPRING_PROFILES_ACTIVE=prd
+      - SERVER_PORT=8080
+    networks:
+      - traefik-network
+      - backend-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.fleet-manager.rule=Host(`api.fleet-manager.in`)"
+      - "traefik.http.routers.fleet-manager.tls.certresolver=letsencrypt"
+      - "traefik.http.services.fleet-manager.loadbalancer.server.port=8080"
+    depends_on:
+      - traefik
+
+  # Inventory Auth Service
+  inventory-auth-service:
+    build:
+      context: https://github.com/ddhanawade/inventory-auth-service.git
+    container_name: inventory-auth-service
+    restart: unless-stopped
+    environment:
+      - SPRING_PROFILES_ACTIVE=prd
+      - SERVER_PORT=8082
+    networks:
+      - traefik-network
+      - backend-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.inventory-auth.rule=Host(`auth.fleet-manager.in`)"
+      - "traefik.http.routers.inventory-auth.tls.certresolver=letsencrypt"
+      - "traefik.http.services.inventory-auth.loadbalancer.server.port=8081"
+    depends_on:
+      - traefik
+
+  # Vehicle Inventory Frontend
+  vehicle-inventory:
+    build:
+      context: https://github.com/ddhanawade/vehicle-inventory.git
+    container_name: vehicle-inventory
+    restart: unless-stopped
+    networks:
+      - traefik-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.vehicle-inventory.rule=Host(`app.fleet-manager.in`) || Host(`fleet-manager.in`)"
+      - "traefik.http.routers.vehicle-inventory.tls.certresolver=letsencrypt"
+      - "traefik.http.services.vehicle-inventory.loadbalancer.server.port=80"
+    depends_on:
+      - traefik
+      - fleet-manager
+      - inventory-auth-service
+
+networks:
+  traefik-network:
+    external: true
+  backend-network:
+    driver: bridge
+
+volumes:
+  traefik-data:
