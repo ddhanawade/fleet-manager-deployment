@@ -38,7 +38,7 @@ services:
     restart: unless-stopped
     environment:
       - SPRING_PROFILES_ACTIVE=prd
-      - SERVER_PORT=8080
+      - SERVER_PORT=8081
     networks:
       - traefik-network
       - backend-network
@@ -46,7 +46,7 @@ services:
       - "traefik.enable=true"
       - "traefik.http.routers.fleet-manager.rule=Host(`api.fleet-manager.in`)"
       - "traefik.http.routers.fleet-manager.tls.certresolver=letsencrypt"
-      - "traefik.http.services.fleet-manager.loadbalancer.server.port=8080"
+      - "traefik.http.services.fleet-manager.loadbalancer.server.port=8081"
     depends_on:
       - traefik
 
