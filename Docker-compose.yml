@@ -21,13 +21,14 @@ services:
       - --certificatesresolvers.letsencrypt.acme.tlschallenge=true
       - --certificatesresolvers.letsencrypt.acme.email=fleet.manager.mp@gmail.com
       - --certificatesresolvers.letsencrypt.acme.storage=/data/acme.json
-      - --entrypoints.web.http.redirections.entrypoint.to=websecure
+      - --entrypoints.web.http.redirections.entrypoint.to=websecure  # Redirect HTTP to HTTPS
       - --entrypoints.web.http.redirections.entrypoint.scheme=https
     networks:
       - traefik-network
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.traefik.rule=Host(`traefik.fleet-manager.in`)"
+      - "traefik.http.routers.traefik.entrypoints=websecure"
       - "traefik.http.routers.traefik.tls.certresolver=letsencrypt"
 
   # Fleet Manager Service
@@ -44,13 +45,13 @@ services:
       - backend-network
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.fleet-manager.rule=Host(`api.fleet-manager.in`)"
+      - "traefik.http.routers.fleet-manager.rule=Host(`fleet-manager.in`)"
+      - "traefik.http.routers.fleet-manager.entrypoints=websecure"
       - "traefik.http.routers.fleet-manager.tls.certresolver=letsencrypt"
       - "traefik.http.services.fleet-manager.loadbalancer.server.port=8081"
     depends_on:
       - traefik
 
-  # Inventory Auth Service
   inventory-auth-service:
     build:
       context: https://github.com/ddhanawade/inventory-auth-service.git
@@ -64,7 +65,8 @@ services:
       - backend-network
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.inventory-auth.rule=Host(`auth.fleet-manager.in`)"
+      - "traefik.http.routers.inventory-auth.rule=Host(`fleet-manager.in`)"
+      - "traefik.http.routers.inventory-auth.entrypoints=websecure"
       - "traefik.http.routers.inventory-auth.tls.certresolver=letsencrypt"
       - "traefik.http.services.inventory-auth.loadbalancer.server.port=8082"
     depends_on:
@@ -81,6 +83,7 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.vehicle-inventory.rule=Host(`app.fleet-manager.in`) || Host(`fleet-manager.in`)"
+      - "traefik.http.routers.vehicle-inventory.entrypoints=websecure"
       - "traefik.http.routers.vehicle-inventory.tls.certresolver=letsencrypt"
       - "traefik.http.services.vehicle-inventory.loadbalancer.server.port=80"
     depends_on:
